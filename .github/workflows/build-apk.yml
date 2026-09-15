@@ -1,0 +1,106 @@
+name: Build Crizon APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        run: |
+          set -e
+
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "${ANDROID_HOME}/cmdline-tools" -name sdkmanager -type f | head -n 1)"
+          fi
+
+          echo "Using sdkmanager: $SDKMANAGER"
+
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+
+          "$SDKMANAGER" \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0" \
+            "ndk;25.1.8937393"
+
+      - name: Check Firebase config
+        run: |
+          if [ ! -f "android/app/google-services.json" ]; then
+            echo "ERROR: android/app/google-services.json is missing"
+            exit 1
+          fi
+
+          echo "Firebase config found successfully."
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Generate debug keystore
+        run: |
+          mkdir -p android/app
+
+          keytool -genkeypair -v \
+            -storetype PKCS12 \
+            -keystore android/app/debug.keystore \
+            -alias androiddebugkey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Install Gradle 8.2
+        run: |
+          set -e
+
+          curl -L --fail --retry 3 \
+            "https://services.gradle.org/distributions/gradle-8.2-bin.zip" \
+            -o /tmp/gradle.zip
+
+          unzip -q /tmp/gradle.zip -d /opt
+
+          echo "/opt/gradle-8.2/bin" >> "$GITHUB_PATH"
+
+          /opt/gradle-8.2/bin/gradle --version
+
+      - name: Generate Gradle wrapper
+        run: |
+          cd android
+          /opt/gradle-8.2/bin/gradle wrapper --gradle-version 8.2
+
+      - name: Grant execute permission
+        run: chmod +x android/gradlew
+
+      - name: Build Release APK
+        run: |
+          cd android
+          ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: crizon-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
