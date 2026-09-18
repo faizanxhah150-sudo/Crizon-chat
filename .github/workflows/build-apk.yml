@@ -1,0 +1,76 @@
+name: Build Crizon APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build native bridge (status bar / gallery save)
+        run: npm run build:bridge
+
+      - name: Add Android platform (if missing)
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+
+      - name: Patch AndroidManifest permissions
+        run: |
+          chmod +x scripts/patch-android.sh
+          ./scripts/patch-android.sh
+
+      - name: Add google-services.json
+        run: cp google-services.json android/app/google-services.json
+
+      - name: Apply app icon
+        run: |
+          cp -r app-icon/mipmap-* android/app/src/main/res/
+          mkdir -p android/app/src/main/res/values
+          cp app-icon/values/ic_launcher_background.xml android/app/src/main/res/values/ic_launcher_background.xml
+
+      - name: Apply brand theme colors (status bar)
+        run: cp app-theme/values/colors.xml android/app/src/main/res/values/colors.xml
+
+      - name: Apply splash screen (remove default Capacitor logo flash)
+        run: |
+          for d in app-splash/*/; do
+            name=$(basename "$d")
+            mkdir -p "android/app/src/main/res/$name"
+            cp "${d}splash.png" "android/app/src/main/res/$name/splash.png"
+          done
+
+      - name: Sync web assets into native project
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crizon-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
