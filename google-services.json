@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "565513456297",
+    "firebase_url": "https://crizon-6f77e-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "crizon-6f77e",
+    "storage_bucket": "crizon-6f77e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:565513456297:android:30ec06e0952b32740037b8",
+        "android_client_info": {
+          "package_name": "com.crizon.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC20bVZKDm15Gq88aN0JL5JZCiKeQb1cNw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
