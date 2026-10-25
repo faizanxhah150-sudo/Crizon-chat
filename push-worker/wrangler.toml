@@ -1,0 +1,7 @@
+name = "crizon-push-free"
+main = "src/index.js"
+compatibility_date = "2026-10-21"
+
+[vars]
+FIREBASE_PROJECT_ID = "crizon-6f77e"
+FIREBASE_API_KEY = "AIzaSyBfKEKEgE2SZUchDpKdTXmq68V60a1aT9s"
